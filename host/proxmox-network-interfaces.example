@@ -1,0 +1,52 @@
+auto lo
+iface lo inet loopback
+
+iface eno1 inet manual
+
+auto vmbr0
+iface vmbr0 inet static
+    address 192.168.1.10/24
+    gateway 192.168.1.1
+    bridge-ports eno1
+    bridge-stp off
+    bridge-fd 0
+
+# Lab WAN uplink on eno2. No host IP on vmbr1.
+iface eno2 inet manual
+
+auto vmbr1
+iface vmbr1 inet manual
+    bridge-ports eno2
+    bridge-stp off
+    bridge-fd 0
+
+# Internal isolated lab bridges. No physical ports, no host IPs.
+auto vmbr2
+iface vmbr2 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+
+auto vmbr3
+iface vmbr3 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+
+auto vmbr4
+iface vmbr4 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+
+auto vmbr5
+iface vmbr5 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+
+auto vmbr6
+iface vmbr6 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0

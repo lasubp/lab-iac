@@ -1,0 +1,39 @@
+pm_api_url          = "https://pve.example.com:8006/api2/json"
+pm_api_token_id     = "terraform@pve!lab"
+pm_api_token_secret = "CHANGE_ME"
+pm_tls_insecure     = true
+
+target_node           = "pve"
+clone_storage         = "local-lvm"
+ubuntu_template_name  = "ubuntu-2404-cloudinit-template"
+opnsense_template_name = "opnsense-template"
+ssh_public_key_file   = "~/.ssh/id_ed25519.pub"
+
+wan_bridge = "vmbr1"
+
+dns_servers  = ["1.1.1.1", "8.8.8.8"]
+searchdomain = "lab.local"
+
+ubuntu_cores     = 2
+ubuntu_memory    = 2048
+ubuntu_disk_size = "20G"
+
+opnsense_cores     = 2
+opnsense_memory    = 4096
+opnsense_disk_size = "32G"
+
+# Optional: override any network here.
+# internal_networks = {
+#   net1 = {
+#     bridge  = "vmbr2"
+#     subnet  = "10.1.1.0/24"
+#     gateway = "10.1.1.1"
+#     hosts   = ["10.1.1.11", "10.1.1.12", "10.1.1.13"]
+#   }
+#   net2 = {
+#     bridge  = "vmbr3"
+#     subnet  = "10.2.2.0/24"
+#     gateway = "10.2.2.1"
+#     hosts   = ["10.2.2.11", "10.2.2.12", "10.2.2.13"]
+#   }
+# }
