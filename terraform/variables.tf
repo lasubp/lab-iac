@@ -34,6 +34,18 @@ variable "target_node" {
   description = "Proxmox node name"
 }
 
+variable "opnsense_vm_name" {
+  type        = string
+  description = "Name of the deployed OPNsense VM"
+  default     = "lab-opnsense"
+}
+
+variable "opnsense_vmid" {
+  type        = number
+  description = "VMID for the deployed OPNsense VM"
+  default     = 2000
+}
+
 variable "ubuntu_template_name" {
   type        = string
   description = "Name of the prepared Ubuntu cloud-init template"
@@ -57,6 +69,18 @@ variable "ssh_public_key_file" {
 variable "vm_username" {
   type    = string
   default = "ubuntu"
+}
+
+variable "ubuntu_vmid_base" {
+  type        = number
+  description = "Starting VMID for Ubuntu guests"
+  default     = 2100
+}
+
+variable "ubuntu_vmid_stride" {
+  type        = number
+  description = "VMID spacing reserved per internal network"
+  default     = 10
 }
 
 variable "dns_servers" {
@@ -104,6 +128,24 @@ variable "wan_bridge" {
   default = "vmbr1"
 }
 
+variable "enable_proxmox_firewall" {
+  type        = bool
+  description = "Whether to enable the Proxmox firewall flag on VM NICs"
+  default     = true
+}
+
+variable "ubuntu_network_model" {
+  type        = string
+  description = "NIC model for Ubuntu guests"
+  default     = "virtio"
+}
+
+variable "opnsense_network_model" {
+  type        = string
+  description = "NIC model for the OPNsense VM"
+  default     = "virtio"
+}
+
 variable "internal_networks" {
   description = "Per-network bridge and addressing"
   type = map(object({
@@ -143,5 +185,10 @@ variable "internal_networks" {
       gateway = "10.5.5.1"
       hosts   = ["10.5.5.11", "10.5.5.12", "10.5.5.13"]
     }
+  }
+
+  validation {
+    condition     = length(var.internal_networks) > 0
+    error_message = "Define at least one internal network."
   }
 }
