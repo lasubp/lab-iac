@@ -2,6 +2,8 @@
 
 This document finishes the firewall configuration after Terraform deploys the OPNsense VM.
 
+The interface names, bridges, and IP plan below match the default `terraform.tfvars.example`. If you customize `wan_bridge`, `internal_networks`, VM naming, or the number of LANs in Terraform, make the equivalent changes here during OPNsense setup.
+
 ## Interfaces used by the clone
 
 | OPNsense NIC | Proxmox bridge | Role |
@@ -42,7 +44,7 @@ After `terraform apply`, open the OPNsense clone console and configure the inter
 
 ### 1. Assign IP addresses
 
-Use these addresses:
+With the default Terraform variables, use these addresses:
 
 | Interface | Name in UI | IPv4 |
 |---|---|---|
@@ -76,6 +78,8 @@ Set outbound NAT to **Automatic**.
 ### 4. Firewall rules
 
 Because OPNsense processes rules top-down on each interface, add rules in this order.
+
+These rules implement the default topology where NET1 is the shared hub and NET2..NET5 are isolated from each other. If you change the number of networks or their intended reachability, adjust the rule set to match.
 
 #### NET1 rules
 
