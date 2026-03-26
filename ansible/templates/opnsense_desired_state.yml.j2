@@ -1,0 +1,54 @@
+network_names:
+{% for name in network_names %}
+  - {{ name }}
+{% endfor %}
+hub_network_name: {{ hub_network_name }}
+interface_map:
+{% for name in network_names %}
+  {{ name }}: {{ resolved_interface_map[name] }}
+{% endfor %}
+kea_interfaces:
+{% for name in network_names %}
+  - {{ resolved_interface_map[name] }}
+{% endfor %}
+desired_subnets:
+{% for name in network_names %}
+  - name: {{ name }}
+    interface: {{ resolved_interface_map[name] }}
+    subnet: {{ lab_networks[name].subnet }}
+    gateway: {{ lab_networks[name].gateway }}
+    pools: |-
+      {{ lab_networks[name].gateway | regex_replace('\\d+$', '100') }} - {{ lab_networks[name].gateway | regex_replace('\\d+$', '199') }}
+{% endfor %}
+desired_rules:
+  - description: "{{ opnsense_rule_prefix }} {{ hub_network_name }} pass any"
+    sequence: 100
+    interface: {{ resolved_interface_map[hub_network_name] }}
+    action: pass
+    source_net: "{{ lab_networks[hub_network_name].subnet }}"
+    destination_net: any
+{% for name in network_names if name != hub_network_name %}
+  - description: "{{ opnsense_rule_prefix }} {{ name }} pass {{ hub_network_name }}"
+    sequence: {{ 200 + (loop.index0 * 300) }}
+    interface: {{ resolved_interface_map[name] }}
+    action: pass
+    source_net: "{{ lab_networks[name].subnet }}"
+    destination_net: "{{ lab_networks[hub_network_name].subnet }}"
+{% if network_names | length > 2 %}
+  - description: "{{ opnsense_rule_prefix }} {{ name }} block spokes"
+    sequence: {{ 300 + (loop.index0 * 300) }}
+    interface: {{ resolved_interface_map[name] }}
+    action: block
+    source_net: "{{ lab_networks[name].subnet }}"
+    destination_net:
+{% for other_name in network_names if other_name not in [hub_network_name, name] %}
+      - "{{ lab_networks[other_name].subnet }}"
+{% endfor %}
+{% endif %}
+  - description: "{{ opnsense_rule_prefix }} {{ name }} pass any"
+    sequence: {{ 400 + (loop.index0 * 300) }}
+    interface: {{ resolved_interface_map[name] }}
+    action: pass
+    source_net: "{{ lab_networks[name].subnet }}"
+    destination_net: any
+{% endfor %}

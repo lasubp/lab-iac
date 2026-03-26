@@ -2,6 +2,8 @@
 
 This document finishes the firewall configuration after Terraform deploys the OPNsense VM.
 
+If you use the Ansible flow documented in `ansible/README.md`, the DHCP and firewall sections below become the reference layout that Ansible will apply through the OPNsense API. The initial interface assignment and IP addressing still need to exist in the template first.
+
 The interface names, bridges, and IP plan below match the default `terraform.tfvars.example`. If you customize `wan_bridge`, `internal_networks`, VM naming, or the number of LANs in Terraform, make the equivalent changes here during OPNsense setup.
 
 ## Interfaces used by the clone

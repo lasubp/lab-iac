@@ -1,0 +1,65 @@
+- name: Search for existing Kea subnet {{ item.subnet }}
+  ansible.builtin.uri:
+    url: "{{ opnsense_api_url }}/api/kea/dhcpv4/searchSubnet?current=1&rowCount=-1&searchPhrase={{ item.subnet | urlencode }}"
+    method: GET
+    user: "{{ opnsense_api_key }}"
+    password: "{{ opnsense_api_secret }}"
+    force_basic_auth: true
+    validate_certs: "{{ opnsense_validate_certs }}"
+    return_content: true
+    status_code: 200
+    headers:
+      Accept: "application/json"
+  register: kea_subnet_search
+
+- name: Resolve Kea subnet UUID for {{ item.subnet }}
+  ansible.builtin.set_fact:
+    existing_kea_subnet: >-
+      {{
+        (kea_subnet_search.json.rows | default([])
+        | selectattr('subnet', 'equalto', item.subnet)
+        | list
+        | first) | default({})
+      }}
+
+- name: Upsert Kea subnet {{ item.subnet }}
+  ansible.builtin.uri:
+    url: >-
+      {{
+        opnsense_api_url
+        ~ (
+          '/api/kea/dhcpv4/setSubnet/' ~ existing_kea_subnet.uuid
+          if (existing_kea_subnet.uuid | default('')) | length > 0
+          else '/api/kea/dhcpv4/addSubnet'
+        )
+      }}
+    method: POST
+    user: "{{ opnsense_api_key }}"
+    password: "{{ opnsense_api_secret }}"
+    force_basic_auth: true
+    validate_certs: "{{ opnsense_validate_certs }}"
+    return_content: true
+    status_code: 200
+    body_format: json
+    headers:
+      Accept: "application/json"
+    body:
+      subnet4:
+        subnet: "{{ item.subnet }}"
+        pools: "{{ item.pools }}"
+        option_data:
+          routers:
+            - "{{ item.gateway }}"
+          domain_name_servers: "{{ terraform_dns_servers }}"
+          domain_search:
+            - "{{ terraform_searchdomain }}"
+        option_data_autocollect: "1"
+        match-client-id: "1"
+        description: "{{ opnsense_rule_prefix }} {{ item.name }}"
+  register: kea_subnet_upsert
+
+- name: Verify Kea subnet upsert result for {{ item.subnet }}
+  ansible.builtin.assert:
+    that:
+      - kea_subnet_upsert.json.result | default('saved') in ['saved', 'ok']
+    fail_msg: "Kea subnet {{ item.subnet }} was not accepted by OPNsense: {{ kea_subnet_upsert.json }}"

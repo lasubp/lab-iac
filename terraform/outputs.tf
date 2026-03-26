@@ -15,3 +15,11 @@ output "ubuntu_vm_ips" {
 output "network_summary" {
   value = var.internal_networks
 }
+
+output "dns_servers" {
+  value = var.dns_servers
+}
+
+output "searchdomain" {
+  value = var.searchdomain
+}

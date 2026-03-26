@@ -1,6 +1,6 @@
 # Proxmox Lab IaC - customizable isolated networks with an OPNsense hub
 
-This project deploys a Proxmox lab with Terraform-managed VM topology and operator-managed OPNsense policy.
+This project deploys a Proxmox lab with Terraform-managed VM topology and Ansible-managed OPNsense policy.
 
 Default design goals:
 
@@ -54,6 +54,16 @@ Terraform in this repo:
 - sets static IPs, gateway, SSH key, DNS, and metadata for Ubuntu VMs
 - wires OPNsense to one WAN bridge and every LAN bridge defined in `internal_networks`
 
+## What Ansible does
+
+Ansible in this repo:
+
+- reads the exported Terraform outputs
+- configures Kea DHCPv4 on OPNsense
+- creates one DHCP subnet and pool per internal network
+- creates the default lab firewall policy through the OPNsense API
+- applies firewall changes using OPNsense savepoints for rollback safety
+
 ## What Terraform does not do
 
 To keep this reliable on real Proxmox installs, the project expects two templates to exist before `terraform apply`:
@@ -63,7 +73,7 @@ To keep this reliable on real Proxmox installs, the project expects two template
 
 Those prep steps are scripted and documented here because this is the most repeatable Proxmox workflow when deploying many identical guests from a base image.
 
-The firewall rules inside OPNsense are still a manual step. This repo creates the firewall VM and its NIC layout, but it does not program OPNsense policy through Terraform.
+Terraform still does not log into OPNsense and configure it internally. That is handled by the Ansible step after `terraform apply`.
 
 ---
 
@@ -79,6 +89,17 @@ lab-iac/
     create-opnsense-installer-vm.sh
   opnsense/
     README.md
+  ansible/
+    README.md
+    playbooks/
+      configure_opnsense.yml
+    tasks/
+      manage_firewall_rule.yml
+      manage_kea_subnet.yml
+    templates/
+      opnsense_desired_state.yml.j2
+    vars/
+      opnsense.yml.example
   terraform/
     main.tf
     variables.tf
@@ -208,21 +229,53 @@ With the default variables, Terraform will create:
 
 ---
 
-## 6) Finish OPNsense configuration
+## 6) Bootstrap OPNsense once
 
-After the OPNsense clone first boots, follow `opnsense/README.md` to configure:
+Before automation can take over, follow `opnsense/README.md` once to verify:
 
 - interface assignment
 - LAN IPs
-- DHCP scopes
 - automatic outbound NAT
-- firewall rules
 
-This is the one manual step that remains, because the firewall itself needs its own internal configuration after deployment. If you customize `internal_networks`, bridge assignments, or VM naming in Terraform, mirror those values when assigning interfaces and policy in OPNsense.
+The Ansible step below assumes the OPNsense template already has the correct interface layout and static LAN IPs.
 
 ---
 
-## 7) Resulting traffic policy
+## 7) Export Terraform outputs for Ansible
+
+```bash
+bash scripts/export-terraform-outputs.sh
+```
+
+This writes `ansible/generated/terraform-output.json`.
+
+---
+
+## 8) Configure OPNsense with Ansible
+
+Create the Ansible vars file:
+
+```bash
+cp ansible/vars/opnsense.yml.example ansible/vars/opnsense.yml
+```
+
+Edit:
+
+- OPNsense API URL
+- OPNsense API key and secret
+- optional interface mapping override if you changed the default LAN/OPT assignment
+
+Then run:
+
+```bash
+ansible-playbook -i localhost, ansible/playbooks/configure_opnsense.yml
+```
+
+For the detailed flow and prerequisites, see `ansible/README.md`.
+
+---
+
+## 9) Resulting traffic policy
 
 - Net1 <-> Net2/3/4/5: allowed
 - Net2 -> Net1: allowed

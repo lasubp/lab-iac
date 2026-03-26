@@ -1,0 +1,65 @@
+- name: Search for existing firewall rule {{ item.description }}
+  ansible.builtin.uri:
+    url: "{{ opnsense_api_url }}/api/firewall/filter/searchRule?current=1&rowCount=-1&searchPhrase={{ item.description | urlencode }}"
+    method: GET
+    user: "{{ opnsense_api_key }}"
+    password: "{{ opnsense_api_secret }}"
+    force_basic_auth: true
+    validate_certs: "{{ opnsense_validate_certs }}"
+    return_content: true
+    status_code: 200
+    headers:
+      Accept: "application/json"
+  register: firewall_rule_search
+
+- name: Resolve firewall rule UUID for {{ item.description }}
+  ansible.builtin.set_fact:
+    existing_firewall_rule: >-
+      {{
+        (firewall_rule_search.json.rows | default([])
+        | selectattr('description', 'equalto', item.description)
+        | list
+        | first) | default({})
+      }}
+
+- name: Upsert firewall rule {{ item.description }}
+  ansible.builtin.uri:
+    url: >-
+      {{
+        opnsense_api_url
+        ~ (
+          '/api/firewall/filter/setRule/' ~ existing_firewall_rule.uuid
+          if (existing_firewall_rule.uuid | default('')) | length > 0
+          else '/api/firewall/filter/addRule'
+        )
+      }}
+    method: POST
+    user: "{{ opnsense_api_key }}"
+    password: "{{ opnsense_api_secret }}"
+    force_basic_auth: true
+    validate_certs: "{{ opnsense_validate_certs }}"
+    return_content: true
+    status_code: 200
+    body_format: json
+    headers:
+      Accept: "application/json"
+    body:
+      rule:
+        enabled: "1"
+        sequence: "{{ item.sequence | string }}"
+        action: "{{ item.action }}"
+        quick: "1"
+        interface: "{{ item.interface }}"
+        direction: "in"
+        ipprotocol: "inet"
+        protocol: "any"
+        source_net: "{{ item.source_net }}"
+        destination_net: "{{ item.destination_net }}"
+        description: "{{ item.description }}"
+  register: firewall_rule_upsert
+
+- name: Verify firewall rule upsert result for {{ item.description }}
+  ansible.builtin.assert:
+    that:
+      - firewall_rule_upsert.json.result | default('saved') in ['saved', 'ok']
+    fail_msg: "Firewall rule {{ item.description }} was not accepted by OPNsense: {{ firewall_rule_upsert.json }}"

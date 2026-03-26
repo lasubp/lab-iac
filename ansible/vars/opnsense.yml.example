@@ -1,0 +1,18 @@
+opnsense_api_url: "https://10.1.1.1"
+opnsense_api_key: "CHANGE_ME"
+opnsense_api_secret: "CHANGE_ME"
+opnsense_validate_certs: false
+
+# Optional overrides. With the default template prep, the first internal
+# network maps to LAN, then the remaining networks map to OPT1..OPT4.
+# opnsense_interface_map:
+#   net1: lan
+#   net2: opt1
+#   net3: opt2
+#   net4: opt3
+#   net5: opt4
+
+opnsense_kea_valid_lifetime: 4000
+opnsense_kea_auto_firewall_rules: true
+opnsense_kea_socket_type: "raw"
+opnsense_rule_prefix: "lab-iac"
