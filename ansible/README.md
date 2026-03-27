@@ -11,6 +11,8 @@ Prerequisites on the machine running the playbook:
 - Terraform outputs exported from Terraform 1.9 or newer
 - HTTPS connectivity to the OPNsense API endpoint
 
+The Terraform side of this workflow now uses the pinned `Telmate/proxmox` provider, but the exported output shape consumed by Ansible stays the same.
+
 The Ansible playbook configures:
 
 - Kea DHCPv4 general settings

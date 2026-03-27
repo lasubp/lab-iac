@@ -2,11 +2,15 @@
 
 This project deploys a Proxmox lab with Terraform-managed VM topology and Ansible-managed OPNsense policy.
 
+The Terraform layer in this repo targets the `Telmate/proxmox` provider and the `proxmox_vm_qemu` resource schema from that provider.
+
 Prerequisites on the machine driving the workflow:
 
 - `terraform` 1.9 or newer
 - `ansible-playbook`
 - network access to the Proxmox API and the OPNsense API endpoint
+
+`terraform init` will install the pinned `Telmate/proxmox` provider automatically.
 
 Default design goals:
 
@@ -61,6 +65,8 @@ Terraform in this repo:
 - attaches each VM to the correct bridge
 - sets static IPs, gateway, SSH key, DNS, and metadata for Ubuntu VMs
 - wires OPNsense to one WAN bridge and every LAN bridge defined in `internal_networks`
+
+This behavior has been tuned against the Telmate provider's current clone, disk, and NIC ordering semantics. Treat future provider changes as something to re-plan carefully, not as a transparent implementation detail.
 
 ## What Ansible does
 
@@ -234,6 +240,16 @@ terraform init
 terraform plan
 terraform apply
 ```
+
+If you already have Terraform state created with `Terraform-for-Proxmox/proxmox`, do not assume this provider migration is transparent. Review the next plan carefully and be ready to migrate state explicitly before applying:
+
+```bash
+terraform state replace-provider \
+  registry.terraform.io/Terraform-for-Proxmox/proxmox \
+  registry.terraform.io/Telmate/proxmox
+```
+
+Even after replacing the provider address, expect possible diffs around disks, NIC ordering, and clone-backed VM details because this was not just a provider-source line swap.
 
 With the default variables, Terraform will create:
 

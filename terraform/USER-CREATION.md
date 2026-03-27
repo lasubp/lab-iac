@@ -1,5 +1,7 @@
 # Guide to create a Terraform user and API token in Proxmox
 
+The privilege sets below follow the Telmate Proxmox provider guidance. This repo intentionally keeps the local user name as `terraform@pve` and the example token name as `lab` so they match `terraform/terraform.tfvars.example`.
+
 ## Role creation
 
 ### Create role in PVE 8 and older

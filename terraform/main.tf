@@ -26,34 +26,38 @@ resource "proxmox_vm_qemu" "opnsense" {
   clone       = var.opnsense_template_name
   full_clone  = true
 
-  vmid    = var.opnsense_vmid
-  onboot  = true
-  os_type = "other"
-  scsihw  = "virtio-scsi-pci"
-  boot    = "order=scsi0"
-  agent   = 0
-  cores   = var.opnsense_cores
-  memory  = var.opnsense_memory
-  balloon = 0
+  vmid               = var.opnsense_vmid
+  start_at_node_boot = true
+  os_type            = "other"
+  scsihw             = "virtio-scsi-pci"
+  boot               = "order=scsi0"
+  agent              = 0
+  cores              = var.opnsense_cores
+  memory             = var.opnsense_memory
+  balloon            = 0
 
   disk {
-    slot    = 0
-    type    = "scsi"
+    slot    = "scsi0"
+    type    = "disk"
     storage = var.clone_storage
     size    = var.opnsense_disk_size
   }
 
   network {
+    id       = 0
     model    = var.opnsense_network_model
     bridge   = var.wan_bridge
     firewall = var.enable_proxmox_firewall
   }
 
   dynamic "network" {
-    for_each = local.opnsense_network_order
+    for_each = {
+      for idx, net_name in local.opnsense_network_order : net_name => idx + 1
+    }
     content {
+      id       = network.value
       model    = var.opnsense_network_model
-      bridge   = var.internal_networks[network.value].bridge
+      bridge   = var.internal_networks[network.key].bridge
       firewall = var.enable_proxmox_firewall
     }
   }
@@ -66,31 +70,32 @@ resource "proxmox_vm_qemu" "ubuntu" {
   clone       = var.ubuntu_template_name
   full_clone  = true
 
-  vmid         = each.value.vmid
-  onboot       = true
-  os_type      = "cloud-init"
-  agent        = 1
-  qemu_os      = "l26"
-  scsihw       = "virtio-scsi-pci"
-  boot         = "order=scsi0"
-  ciuser       = var.vm_username
-  sshkeys      = local.ssh_public_key
-  ipconfig0    = "ip=${each.value.ip}/${each.value.cidr},gw=${each.value.gateway}"
-  nameserver   = join(" ", var.dns_servers)
-  searchdomain = var.searchdomain
+  vmid               = each.value.vmid
+  start_at_node_boot = true
+  os_type            = "cloud-init"
+  agent              = 1
+  qemu_os            = "l26"
+  scsihw             = "virtio-scsi-pci"
+  boot               = "order=scsi0"
+  ciuser             = var.vm_username
+  sshkeys            = local.ssh_public_key
+  ipconfig0          = "ip=${each.value.ip}/${each.value.cidr},gw=${each.value.gateway}"
+  nameserver         = join(" ", var.dns_servers)
+  searchdomain       = var.searchdomain
 
   cores   = var.ubuntu_cores
   memory  = var.ubuntu_memory
   balloon = 0
 
   disk {
-    slot    = 0
-    type    = "scsi"
+    slot    = "scsi0"
+    type    = "disk"
     storage = var.clone_storage
     size    = var.ubuntu_disk_size
   }
 
   network {
+    id       = 0
     model    = var.ubuntu_network_model
     bridge   = each.value.bridge
     firewall = var.enable_proxmox_firewall
