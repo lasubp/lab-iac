@@ -31,8 +31,15 @@ If the detected names are `em0`, `em1`, etc., use those instead. The bridge mapp
    - OPT2 = vtnet3
    - OPT3 = vtnet4
    - OPT4 = vtnet5
-5. Shutdown the VM.
-6. Convert it to a template:
+5. Before templating, switch the VM boot order to the disk or remove the installer ISO:
+
+```bash
+qm set <VMID> --boot order=scsi0
+qm set <VMID> --delete ide2
+```
+
+6. Shutdown the VM.
+7. Convert it to a template:
 
 ```bash
 qm template <VMID>
@@ -58,6 +65,8 @@ With the default Terraform variables, use these addresses:
 | OPT4 | NET5 | 10.5.5.1/24 |
 
 Rename interfaces in the GUI so rules are readable.
+
+This repo currently supports up to 5 internal networks, which map to `LAN` plus `OPT1..OPT4`.
 
 ### 2. Enable DHCP on each internal network
 

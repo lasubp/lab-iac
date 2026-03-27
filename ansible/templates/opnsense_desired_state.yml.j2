@@ -19,23 +19,24 @@ desired_subnets:
     gateway: {{ lab_networks[name].gateway }}
     pools: |-
       {{ lab_networks[name].gateway | regex_replace('\\d+$', '100') }} - {{ lab_networks[name].gateway | regex_replace('\\d+$', '199') }}
+    description: "{{ opnsense_rule_prefix }} subnet {{ name }}"
 {% endfor %}
 desired_rules:
-  - description: "{{ opnsense_rule_prefix }} {{ hub_network_name }} pass any"
+  - description: "{{ opnsense_rule_prefix }} rule {{ hub_network_name }} pass any"
     sequence: 100
     interface: {{ resolved_interface_map[hub_network_name] }}
     action: pass
     source_net: "{{ lab_networks[hub_network_name].subnet }}"
     destination_net: any
 {% for name in network_names if name != hub_network_name %}
-  - description: "{{ opnsense_rule_prefix }} {{ name }} pass {{ hub_network_name }}"
+  - description: "{{ opnsense_rule_prefix }} rule {{ name }} pass {{ hub_network_name }}"
     sequence: {{ 200 + (loop.index0 * 300) }}
     interface: {{ resolved_interface_map[name] }}
     action: pass
     source_net: "{{ lab_networks[name].subnet }}"
     destination_net: "{{ lab_networks[hub_network_name].subnet }}"
 {% if network_names | length > 2 %}
-  - description: "{{ opnsense_rule_prefix }} {{ name }} block spokes"
+  - description: "{{ opnsense_rule_prefix }} rule {{ name }} block spokes"
     sequence: {{ 300 + (loop.index0 * 300) }}
     interface: {{ resolved_interface_map[name] }}
     action: block
@@ -45,7 +46,7 @@ desired_rules:
       - "{{ lab_networks[other_name].subnet }}"
 {% endfor %}
 {% endif %}
-  - description: "{{ opnsense_rule_prefix }} {{ name }} pass any"
+  - description: "{{ opnsense_rule_prefix }} rule {{ name }} pass any"
     sequence: {{ 400 + (loop.index0 * 300) }}
     interface: {{ resolved_interface_map[name] }}
     action: pass

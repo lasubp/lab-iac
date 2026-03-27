@@ -5,6 +5,12 @@ This repo now supports a practical two-step workflow:
 1. Terraform creates the Proxmox topology and all VMs.
 2. Ansible configures OPNsense through the official OPNsense API.
 
+Prerequisites on the machine running the playbook:
+
+- `ansible-playbook`
+- Terraform outputs exported from Terraform 1.9 or newer
+- HTTPS connectivity to the OPNsense API endpoint
+
 The Ansible playbook configures:
 
 - Kea DHCPv4 general settings
@@ -50,12 +56,13 @@ Edit:
 - `opnsense_api_key`
 - `opnsense_api_secret`
 - optional `opnsense_prune_managed_resources` toggle if you want to disable cleanup behavior
+- optional `opnsense_interface_map` override if your template interface order is not the default Terraform order
 
 If your interface assignment differs from the default template prep, also set `opnsense_interface_map`.
 
 Default mapping:
 
-- first Terraform network -> `lan`
+- first entry in `opnsense_internal_network_order` -> `lan`
 - second -> `opt1`
 - third -> `opt2`
 - fourth -> `opt3`
@@ -72,6 +79,7 @@ The playbook runs locally and talks to OPNsense over HTTPS with the API key.
 ## Notes
 
 - The firewall apply uses OPNsense savepoints so failed rule changes can roll back automatically.
-- Rule descriptions are prefixed with `lab-iac` by default to make them easy to identify later.
-- Pruning only touches Kea subnets and firewall rules whose description starts with the configured `opnsense_rule_prefix`.
+- Managed descriptions are prefixed with `lab-iac` by default and use `subnet` or `rule` markers to scope pruning more tightly.
+- Pruning happens after current Kea subnets have been upserted successfully, so DHCP updates are no longer destructive-first.
+- Pruning only touches Kea subnets matching `"<prefix> subnet ..."` and firewall rules matching `"<prefix> rule ..."`.
 - The playbook does not currently manage WAN settings or interface IP assignment. Those still come from your initial OPNsense install/template prep.

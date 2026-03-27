@@ -55,7 +55,7 @@
             - "{{ terraform_searchdomain }}"
         option_data_autocollect: "1"
         match-client-id: "1"
-        description: "{{ opnsense_rule_prefix }} {{ item.name }}"
+        description: "{{ item.description }}"
   register: kea_subnet_upsert
 
 - name: Verify Kea subnet upsert result for {{ item.subnet }}

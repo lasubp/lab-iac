@@ -36,13 +36,17 @@
       ansible.builtin.include_vars:
         file: "{{ opnsense_vars_file }}"
 
+    - name: Apply defaults for optional operator vars
+      ansible.builtin.set_fact:
+        opnsense_prune_managed_resources: "{{ opnsense_prune_managed_resources | default(true) }}"
+
     - name: Derive topology facts from Terraform outputs
       ansible.builtin.set_fact:
         lab_networks: "{{ terraform_outputs.network_summary.value }}"
         terraform_dns_servers: "{{ terraform_outputs.dns_servers.value }}"
         terraform_searchdomain: "{{ terraform_outputs.searchdomain.value }}"
-        network_names: "{{ terraform_outputs.network_summary.value.keys() | list | sort }}"
-        hub_network_name: "{{ (terraform_outputs.network_summary.value.keys() | list | sort)[0] }}"
+        network_names: "{{ terraform_outputs.opnsense_internal_network_order.value }}"
+        hub_network_name: "{{ terraform_outputs.hub_network_name.value }}"
 
     - name: Build default OPNsense interface mapping
       ansible.builtin.set_fact:
@@ -71,6 +75,7 @@
     - name: Cache desired managed subnet list
       ansible.builtin.set_fact:
         desired_managed_subnets: "{{ opnsense_desired_state.desired_subnets | map(attribute='subnet') | list }}"
+        desired_managed_subnet_descriptions: "{{ opnsense_desired_state.desired_subnets | map(attribute='description') | list }}"
         desired_managed_rule_descriptions: "{{ opnsense_desired_state.desired_rules | map(attribute='description') | list }}"
 
   tasks:
@@ -102,43 +107,6 @@
         that:
           - kea_general_result.json.result | default('saved') in ['saved', 'ok']
         fail_msg: "Kea general settings were not accepted by OPNsense: {{ kea_general_result.json }}"
-
-    - name: Fetch all Kea subnets
-      ansible.builtin.uri:
-        url: "{{ opnsense_api_url }}/api/kea/dhcpv4/searchSubnet?current=1&rowCount=-1"
-        method: GET
-        user: "{{ opnsense_api_key }}"
-        password: "{{ opnsense_api_secret }}"
-        force_basic_auth: true
-        validate_certs: "{{ opnsense_validate_certs }}"
-        return_content: true
-        status_code: 200
-        headers:
-          Accept: "application/json"
-      register: all_kea_subnets_result
-      when: opnsense_prune_managed_resources | bool
-
-    - name: Derive stale managed Kea subnets
-      ansible.builtin.set_fact:
-        stale_kea_subnets: >-
-          {{
-            all_kea_subnets_result.json.rows
-            | default([])
-            | selectattr('description', 'defined')
-            | selectattr('description', 'match', '^' ~ (opnsense_rule_prefix | regex_escape) ~ ' ')
-            | rejectattr('subnet', 'in', desired_managed_subnets)
-            | list
-          }}
-      when: opnsense_prune_managed_resources | bool
-
-    - name: Delete stale managed Kea subnets
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/delete_kea_subnet.yml"
-      loop: "{{ stale_kea_subnets }}"
-      loop_control:
-        label: "{{ item.subnet }}"
-      when:
-        - opnsense_prune_managed_resources | bool
-        - stale_kea_subnets | length > 0
 
     - name: Upsert Kea subnets
       ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/manage_kea_subnet.yml"
@@ -172,6 +140,76 @@
               | lower
             ) is search('ok|saved')
         fail_msg: "Kea service reconfigure failed: {{ kea_reconfigure_result.json }}"
+
+    - name: Fetch all Kea subnets
+      ansible.builtin.uri:
+        url: "{{ opnsense_api_url }}/api/kea/dhcpv4/searchSubnet?current=1&rowCount=-1"
+        method: GET
+        user: "{{ opnsense_api_key }}"
+        password: "{{ opnsense_api_secret }}"
+        force_basic_auth: true
+        validate_certs: "{{ opnsense_validate_certs }}"
+        return_content: true
+        status_code: 200
+        headers:
+          Accept: "application/json"
+      register: all_kea_subnets_result
+      when: opnsense_prune_managed_resources | bool
+
+    - name: Derive stale managed Kea subnets
+      ansible.builtin.set_fact:
+        stale_kea_subnets: >-
+          {{
+            all_kea_subnets_result.json.rows
+            | default([])
+            | selectattr('description', 'defined')
+            | selectattr('description', 'match', '^' ~ (opnsense_rule_prefix | regex_escape) ~ ' subnet ')
+            | rejectattr('description', 'in', desired_managed_subnet_descriptions)
+            | list
+          }}
+      when: opnsense_prune_managed_resources | bool
+
+    - name: Delete stale managed Kea subnets
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/delete_kea_subnet.yml"
+      loop: "{{ stale_kea_subnets }}"
+      loop_control:
+        label: "{{ item.subnet }}"
+      when:
+        - opnsense_prune_managed_resources | bool
+        - stale_kea_subnets | length > 0
+
+    - name: Reconfigure Kea service after pruning stale subnets
+      ansible.builtin.uri:
+        url: "{{ opnsense_api_url }}/api/kea/service/reconfigure"
+        method: POST
+        user: "{{ opnsense_api_key }}"
+        password: "{{ opnsense_api_secret }}"
+        force_basic_auth: true
+        validate_certs: "{{ opnsense_validate_certs }}"
+        return_content: true
+        status_code: 200
+        body_format: json
+        headers:
+          Accept: "application/json"
+      register: kea_prune_reconfigure_result
+      when:
+        - opnsense_prune_managed_resources | bool
+        - stale_kea_subnets | default([]) | length > 0
+
+    - name: Verify Kea reconfigure succeeded after pruning
+      ansible.builtin.assert:
+        that:
+          - >
+            (
+              kea_prune_reconfigure_result.json.result
+              | default(kea_prune_reconfigure_result.json.status | default('ok'))
+              | string
+              | lower
+            ) is search('ok|saved')
+        fail_msg: "Kea service reconfigure after pruning failed: {{ kea_prune_reconfigure_result.json }}"
+      when:
+        - opnsense_prune_managed_resources | bool
+        - stale_kea_subnets | default([]) | length > 0
 
     - name: Create a firewall savepoint before rule changes
       ansible.builtin.uri:
@@ -216,7 +254,7 @@
             all_firewall_rules_result.json.rows
             | default([])
             | selectattr('description', 'defined')
-            | selectattr('description', 'match', '^' ~ (opnsense_rule_prefix | regex_escape) ~ ' ')
+            | selectattr('description', 'match', '^' ~ (opnsense_rule_prefix | regex_escape) ~ ' rule ')
             | rejectattr('description', 'in', desired_managed_rule_descriptions)
             | list
           }}

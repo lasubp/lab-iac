@@ -3,8 +3,9 @@ opnsense_api_key: "CHANGE_ME"
 opnsense_api_secret: "CHANGE_ME"
 opnsense_validate_certs: false
 
-# Optional overrides. With the default template prep, the first internal
-# network maps to LAN, then the remaining networks map to OPT1..OPT4.
+# Optional overrides. With the default template prep, the first entry in
+# opnsense_internal_network_order maps to LAN, then the remaining entries
+# map to OPT1..OPT4.
 # opnsense_interface_map:
 #   net1: lan
 #   net2: opt1
