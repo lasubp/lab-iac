@@ -2,6 +2,12 @@
 
 This project deploys a Proxmox lab with Terraform-managed VM topology and Ansible-managed OPNsense policy.
 
+Prerequisites on the machine driving the workflow:
+
+- `terraform` 1.9 or newer
+- `ansible-playbook`
+- network access to the Proxmox API and the OPNsense API endpoint
+
 Default design goals:
 
 - `vmbr0` is left alone for existing Proxmox management
@@ -18,6 +24,8 @@ Default design goals:
 - each internal network gets 3 Ubuntu Server cloud-init VMs
 
 Most lab settings are exposed in `terraform/variables.tf` and `terraform.tfvars`, so you can change VM names, VMIDs, bridges, network definitions, NIC models, firewall flags, sizing, and addressing without editing the module source.
+
+This repo currently supports up to 5 internal networks because the default OPNsense template wiring maps them to `LAN` plus `OPT1..OPT4`.
 
 ## Final topology
 
@@ -94,6 +102,8 @@ lab-iac/
     playbooks/
       configure_opnsense.yml
     tasks/
+      delete_firewall_rule.yml
+      delete_kea_subnet.yml
       manage_firewall_rule.yml
       manage_kea_subnet.yml
     templates/
@@ -144,12 +154,15 @@ bash scripts/create-ubuntu-template.sh \
 
 This script downloads the Ubuntu cloud image, imports it into Proxmox, adds a cloud-init drive, enables serial console, optionally injects an SSH public key, and converts the VM into a template.
 
+If the VMID already exists, the script exits safely unless you pass `--force-recreate`.
+
 Useful overrides:
 
 - `--image-url` and `--image-file` to control the source image and cache path
 - `--memory`, `--cores`, and `--bridge` to shape the template hardware
 - `--ssh-public-key-file` to inject a specific key into the template metadata
 - `--cloud-init-user-snippet` plus `--snippet-store` if you want to attach a custom cloud-init user-data snippet
+- `--force-recreate` if you intentionally want to replace an existing VM with the same VMID
 
 ---
 
@@ -176,14 +189,16 @@ bash scripts/create-opnsense-installer-vm.sh \
 Useful overrides:
 
 - `--memory`, `--cores`, `--disk-size`, `--bios`, and `--network-model`
-- `--wan-bridge` and `--lan-bridges` to match your bridge layout, including a different number of LANs
+- `--wan-bridge` and `--lan-bridges` to match your bridge layout, up to 5 internal networks
 - `--iso-store` and `--iso-file` to point at the uploaded installer image
+- `--force-recreate` if you intentionally want to replace an existing VM with the same VMID
 
 Then follow `opnsense/README.md` once to:
 
 - boot the installer VM
 - install OPNsense to disk
 - reboot and do the first console setup
+- switch boot order to disk-only or remove the installer ISO
 - shutdown and convert it to a template
 
 ---
@@ -206,6 +221,8 @@ Edit:
 - SSH public key path
 - NIC models and firewall flags
 - full `internal_networks` map if you want a different number of networks or guests
+- `hub_network_name` to pick the shared hub network explicitly
+- `opnsense_internal_network_order` to control which network maps to `LAN`, `OPT1`, `OPT2`, `OPT3`, and `OPT4`
 - VM sizing if needed
 
 ---
@@ -263,6 +280,7 @@ Edit:
 
 - OPNsense API URL
 - OPNsense API key and secret
+- optional pruning behavior toggle
 - optional interface mapping override if you changed the default LAN/OPT assignment
 
 Then run:
@@ -305,6 +323,9 @@ You can change, in `terraform.tfvars`:
 - OPNsense VM name and VMID
 - Ubuntu VMID base/stride
 - number of networks
+- current OPNsense layout support: up to 5
+- hub network name
+- OPNsense internal network order
 - number of VMs per network
 - bridge names
 - subnets and gateways
@@ -321,5 +342,6 @@ You can change, in `terraform.tfvars`:
 
 1. Configure Proxmox bridges once
 2. Create the two templates once
-3. Keep all future lab changes inside Terraform variables
-4. Keep firewall policy changes documented in `opnsense/README.md`
+3. Keep topology changes in Terraform variables
+4. Keep OPNsense automation settings in `ansible/vars/opnsense.yml`
+5. Keep the intended firewall and DHCP layout documented in `opnsense/README.md`

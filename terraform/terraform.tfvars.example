@@ -17,6 +17,8 @@ wan_bridge              = "vmbr1"
 enable_proxmox_firewall = true
 ubuntu_network_model    = "virtio"
 opnsense_network_model  = "virtio"
+hub_network_name        = "net1"
+opnsense_internal_network_order = ["net1", "net2", "net3", "net4", "net5"]
 
 dns_servers  = ["1.1.1.1", "8.8.8.8"]
 searchdomain = "lab.local"

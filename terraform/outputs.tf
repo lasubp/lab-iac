@@ -23,3 +23,11 @@ output "dns_servers" {
 output "searchdomain" {
   value = var.searchdomain
 }
+
+output "hub_network_name" {
+  value = var.hub_network_name
+}
+
+output "opnsense_internal_network_order" {
+  value = var.opnsense_internal_network_order
+}

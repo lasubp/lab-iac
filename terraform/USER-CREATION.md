@@ -1,10 +1,10 @@
-# Guide to create terraform user an API tocken in terraform
+# Guide to create a Terraform user and API token in Proxmox
 
 ## Role creation
 
-### Create role in PVE 8 and Older
+### Create role in PVE 8 and older
 
-``` bash
+```bash
 pveum role add TerraformUser -privs "Datastore.Allocate \
   Datastore.AllocateSpace Datastore.AllocateTemplate \
   Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify \
@@ -14,46 +14,68 @@ pveum role add TerraformUser -privs "Datastore.Allocate \
   VM.Monitor VM.PowerMgmt User.Modify"
 ```
 
-### Create role in PVE 9 and Neawer
+### Create role in PVE 9 and newer
 
-In Proxmox 9, the ```VM.Monitor``` privilege was deprecated and is no longer required.
+In Proxmox 9, the `VM.Monitor` privilege was deprecated and is no longer required.
 
-``` bash
+```bash
 pveum role add TerraformProv -privs "Datastore.AllocateSpace Datastore.AllocateTemplate Datastore.Audit Pool.Allocate Pool.Audit Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Migrate VM.PowerMgmt SDN.Use"
 ```
 
-## create group
+## Create group
 
-``` bash
+```bash
 pveum group add terraform-users
 ```
 
-## add permissions
+## Add permissions
 
-``` bash
+Use `TerraformUser` on Proxmox 8 and older:
+
+```bash
 pveum acl modify /storage -group terraform-users -role TerraformUser
 ```
 
-``` bash
+```bash
 pveum acl modify /vms -group terraform-users -role TerraformUser
 ```
 
-``` bash
+```bash
 pveum acl modify /sdn/zones -group terraform-users -role TerraformUser
 ```
 
-## create user 'terraform'
+Use `TerraformProv` on Proxmox 9 and newer:
 
-``` bash
+```bash
+pveum acl modify /storage -group terraform-users -role TerraformProv
+```
+
+```bash
+pveum acl modify /vms -group terraform-users -role TerraformProv
+```
+
+```bash
+pveum acl modify /sdn/zones -group terraform-users -role TerraformProv
+```
+
+## Create user `terraform`
+
+```bash
 pveum useradd terraform@pve -groups terraform-users
 ```
 
-## generate a token
+## Generate a token
 
-will output a token value similar to the following, save this information as we’ll pass it via environment variables to Terraform at the end.
+This outputs a token value. Save it and use the same token name in `terraform/terraform.tfvars`.
 
-``` bash
-pveum user token add terraform@pve token -privsep 0
+```bash
+pveum user token add terraform@pve lab -privsep 0
 ```
 
-In UI check ```Privilege Separation```, must be set to ```No```
+That matches the example token ID:
+
+```hcl
+pm_api_token_id = "terraform@pve!lab"
+```
+
+In the UI, `Privilege Separation` must be set to `No`.

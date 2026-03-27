@@ -1,6 +1,7 @@
 locals {
   ssh_public_key       = trimspace(file(pathexpand(var.ssh_public_key_file)))
   sorted_network_names = sort(keys(var.internal_networks))
+  opnsense_network_order = var.opnsense_internal_network_order
   network_index_by_name = {
     for idx, net_name in local.sorted_network_names : net_name => idx
   }
@@ -49,7 +50,7 @@ resource "proxmox_vm_qemu" "opnsense" {
   }
 
   dynamic "network" {
-    for_each = local.sorted_network_names
+    for_each = local.opnsense_network_order
     content {
       model    = var.opnsense_network_model
       bridge   = var.internal_networks[network.value].bridge

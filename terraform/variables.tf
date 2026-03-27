@@ -146,6 +146,32 @@ variable "opnsense_network_model" {
   default     = "virtio"
 }
 
+variable "hub_network_name" {
+  type        = string
+  description = "Name of the internal network that acts as the shared hub"
+  default     = "net1"
+
+  validation {
+    condition     = contains(keys(var.internal_networks), var.hub_network_name)
+    error_message = "hub_network_name must match one of the keys in internal_networks."
+  }
+}
+
+variable "opnsense_internal_network_order" {
+  type        = list(string)
+  description = "Ordered list of internal networks mapped to OPNsense LAN, OPT1, OPT2, OPT3, and OPT4"
+  default     = ["net1", "net2", "net3", "net4", "net5"]
+
+  validation {
+    condition = (
+      length(var.opnsense_internal_network_order) == length(keys(var.internal_networks)) &&
+      length(setsubtract(toset(var.opnsense_internal_network_order), toset(keys(var.internal_networks)))) == 0 &&
+      length(setsubtract(toset(keys(var.internal_networks)), toset(var.opnsense_internal_network_order))) == 0
+    )
+    error_message = "opnsense_internal_network_order must contain each internal network key exactly once."
+  }
+}
+
 variable "internal_networks" {
   description = "Per-network bridge and addressing"
   type = map(object({
@@ -190,5 +216,10 @@ variable "internal_networks" {
   validation {
     condition     = length(var.internal_networks) > 0
     error_message = "Define at least one internal network."
+  }
+
+  validation {
+    condition     = length(var.internal_networks) <= 5
+    error_message = "This repo currently supports at most 5 internal networks because the documented OPNsense layout maps them to LAN plus OPT1..OPT4."
   }
 }
