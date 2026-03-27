@@ -241,16 +241,6 @@ terraform plan
 terraform apply
 ```
 
-If you already have Terraform state created with `Terraform-for-Proxmox/proxmox`, do not assume this provider migration is transparent. Review the next plan carefully and be ready to migrate state explicitly before applying:
-
-```bash
-terraform state replace-provider \
-  registry.terraform.io/Terraform-for-Proxmox/proxmox \
-  registry.terraform.io/Telmate/proxmox
-```
-
-Even after replacing the provider address, expect possible diffs around disks, NIC ordering, and clone-backed VM details because this was not just a provider-source line swap.
-
 With the default variables, Terraform will create:
 
 - `lab-opnsense`
