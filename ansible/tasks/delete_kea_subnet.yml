@@ -1,0 +1,26 @@
+- name: Delete stale Kea subnet {{ item.subnet }}
+  ansible.builtin.uri:
+    url: "{{ opnsense_api_url }}/api/kea/dhcpv4/delSubnet/{{ item.uuid }}"
+    method: POST
+    user: "{{ opnsense_api_key }}"
+    password: "{{ opnsense_api_secret }}"
+    force_basic_auth: true
+    validate_certs: "{{ opnsense_validate_certs }}"
+    return_content: true
+    status_code: 200
+    body_format: json
+    headers:
+      Accept: "application/json"
+  register: delete_kea_subnet_result
+
+- name: Verify stale Kea subnet deletion for {{ item.subnet }}
+  ansible.builtin.assert:
+    that:
+      - >
+        (
+          delete_kea_subnet_result.json.result
+          | default(delete_kea_subnet_result.json.status | default('deleted'))
+          | string
+          | lower
+        ) is search('deleted|ok')
+    fail_msg: "Failed to delete stale Kea subnet {{ item.subnet }}: {{ delete_kea_subnet_result.json }}"

@@ -68,6 +68,11 @@
           - opnsense_desired_state.network_names | length > 0
         fail_msg: "Missing API connection details or lab topology inputs."
 
+    - name: Cache desired managed subnet list
+      ansible.builtin.set_fact:
+        desired_managed_subnets: "{{ opnsense_desired_state.desired_subnets | map(attribute='subnet') | list }}"
+        desired_managed_rule_descriptions: "{{ opnsense_desired_state.desired_rules | map(attribute='description') | list }}"
+
   tasks:
     - name: Configure Kea DHCPv4 general settings
       ansible.builtin.uri:
@@ -97,6 +102,43 @@
         that:
           - kea_general_result.json.result | default('saved') in ['saved', 'ok']
         fail_msg: "Kea general settings were not accepted by OPNsense: {{ kea_general_result.json }}"
+
+    - name: Fetch all Kea subnets
+      ansible.builtin.uri:
+        url: "{{ opnsense_api_url }}/api/kea/dhcpv4/searchSubnet?current=1&rowCount=-1"
+        method: GET
+        user: "{{ opnsense_api_key }}"
+        password: "{{ opnsense_api_secret }}"
+        force_basic_auth: true
+        validate_certs: "{{ opnsense_validate_certs }}"
+        return_content: true
+        status_code: 200
+        headers:
+          Accept: "application/json"
+      register: all_kea_subnets_result
+      when: opnsense_prune_managed_resources | bool
+
+    - name: Derive stale managed Kea subnets
+      ansible.builtin.set_fact:
+        stale_kea_subnets: >-
+          {{
+            all_kea_subnets_result.json.rows
+            | default([])
+            | selectattr('description', 'defined')
+            | selectattr('description', 'match', '^' ~ (opnsense_rule_prefix | regex_escape) ~ ' ')
+            | rejectattr('subnet', 'in', desired_managed_subnets)
+            | list
+          }}
+      when: opnsense_prune_managed_resources | bool
+
+    - name: Delete stale managed Kea subnets
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/delete_kea_subnet.yml"
+      loop: "{{ stale_kea_subnets }}"
+      loop_control:
+        label: "{{ item.subnet }}"
+      when:
+        - opnsense_prune_managed_resources | bool
+        - stale_kea_subnets | length > 0
 
     - name: Upsert Kea subnets
       ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/manage_kea_subnet.yml"
@@ -151,6 +193,43 @@
         that:
           - firewall_savepoint_result.json.revision is defined
         fail_msg: "Firewall savepoint did not return a revision: {{ firewall_savepoint_result.json }}"
+
+    - name: Fetch all firewall rules
+      ansible.builtin.uri:
+        url: "{{ opnsense_api_url }}/api/firewall/filter/searchRule?current=1&rowCount=-1"
+        method: GET
+        user: "{{ opnsense_api_key }}"
+        password: "{{ opnsense_api_secret }}"
+        force_basic_auth: true
+        validate_certs: "{{ opnsense_validate_certs }}"
+        return_content: true
+        status_code: 200
+        headers:
+          Accept: "application/json"
+      register: all_firewall_rules_result
+      when: opnsense_prune_managed_resources | bool
+
+    - name: Derive stale managed firewall rules
+      ansible.builtin.set_fact:
+        stale_firewall_rules: >-
+          {{
+            all_firewall_rules_result.json.rows
+            | default([])
+            | selectattr('description', 'defined')
+            | selectattr('description', 'match', '^' ~ (opnsense_rule_prefix | regex_escape) ~ ' ')
+            | rejectattr('description', 'in', desired_managed_rule_descriptions)
+            | list
+          }}
+      when: opnsense_prune_managed_resources | bool
+
+    - name: Delete stale managed firewall rules
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/delete_firewall_rule.yml"
+      loop: "{{ stale_firewall_rules }}"
+      loop_control:
+        label: "{{ item.description }}"
+      when:
+        - opnsense_prune_managed_resources | bool
+        - stale_firewall_rules | length > 0
 
     - name: Upsert firewall rules
       ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/manage_firewall_rule.yml"
@@ -217,4 +296,6 @@
         msg:
           - "Configured Kea on interfaces: {{ opnsense_desired_state.kea_interfaces | join(', ') }}"
           - "Configured subnets: {{ opnsense_desired_state.desired_subnets | map(attribute='subnet') | join(', ') }}"
+          - "Pruned subnets: {{ (stale_kea_subnets | default([])) | map(attribute='subnet') | list | join(', ') if (stale_kea_subnets | default([]) | length > 0) else 'none' }}"
           - "Configured firewall rules: {{ opnsense_desired_state.desired_rules | map(attribute='description') | join('; ') }}"
+          - "Pruned firewall rules: {{ (stale_firewall_rules | default([])) | map(attribute='description') | list | join('; ') if (stale_firewall_rules | default([]) | length > 0) else 'none' }}"

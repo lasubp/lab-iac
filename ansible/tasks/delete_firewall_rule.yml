@@ -1,0 +1,26 @@
+- name: Delete stale firewall rule {{ item.description }}
+  ansible.builtin.uri:
+    url: "{{ opnsense_api_url }}/api/firewall/filter/delRule/{{ item.uuid }}"
+    method: POST
+    user: "{{ opnsense_api_key }}"
+    password: "{{ opnsense_api_secret }}"
+    force_basic_auth: true
+    validate_certs: "{{ opnsense_validate_certs }}"
+    return_content: true
+    status_code: 200
+    body_format: json
+    headers:
+      Accept: "application/json"
+  register: delete_firewall_rule_result
+
+- name: Verify stale firewall rule deletion for {{ item.description }}
+  ansible.builtin.assert:
+    that:
+      - >
+        (
+          delete_firewall_rule_result.json.result
+          | default(delete_firewall_rule_result.json.status | default('deleted'))
+          | string
+          | lower
+        ) is search('deleted|ok')
+    fail_msg: "Failed to delete stale firewall rule {{ item.description }}: {{ delete_firewall_rule_result.json }}"

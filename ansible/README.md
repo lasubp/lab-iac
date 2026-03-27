@@ -10,6 +10,7 @@ The Ansible playbook configures:
 - Kea DHCPv4 general settings
 - one Kea subnet and pool per Terraform network
 - the default lab firewall policy where `NET1` is the hub and `NET2`..`NET5` are isolated from each other
+- optional pruning of old `lab-iac`-managed Kea subnets and firewall rules that no longer match the Terraform-driven desired state
 
 It assumes:
 
@@ -48,6 +49,7 @@ Edit:
 - `opnsense_api_url`
 - `opnsense_api_key`
 - `opnsense_api_secret`
+- optional `opnsense_prune_managed_resources` toggle if you want to disable cleanup behavior
 
 If your interface assignment differs from the default template prep, also set `opnsense_interface_map`.
 
@@ -71,4 +73,5 @@ The playbook runs locally and talks to OPNsense over HTTPS with the API key.
 
 - The firewall apply uses OPNsense savepoints so failed rule changes can roll back automatically.
 - Rule descriptions are prefixed with `lab-iac` by default to make them easy to identify later.
+- Pruning only touches Kea subnets and firewall rules whose description starts with the configured `opnsense_rule_prefix`.
 - The playbook does not currently manage WAN settings or interface IP assignment. Those still come from your initial OPNsense install/template prep.

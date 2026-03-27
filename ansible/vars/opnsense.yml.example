@@ -16,3 +16,4 @@ opnsense_kea_valid_lifetime: 4000
 opnsense_kea_auto_firewall_rules: true
 opnsense_kea_socket_type: "raw"
 opnsense_rule_prefix: "lab-iac"
+opnsense_prune_managed_resources: true
