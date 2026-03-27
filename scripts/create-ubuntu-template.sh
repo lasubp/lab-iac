@@ -13,6 +13,7 @@ MEMORY="2048"
 CORES="2"
 BRIDGE="vmbr0"
 SSH_PUBLIC_KEY_FILE=""
+FORCE_RECREATE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -28,12 +29,13 @@ while [[ $# -gt 0 ]]; do
     --cores) CORES="$2"; shift 2 ;;
     --bridge) BRIDGE="$2"; shift 2 ;;
     --ssh-public-key-file) SSH_PUBLIC_KEY_FILE="$2"; shift 2 ;;
+    --force-recreate) FORCE_RECREATE=1; shift 1 ;;
     *) echo "Unknown arg: $1" >&2; exit 1 ;;
   esac
 done
 
 if [[ -z "$VMID" || -z "$NODE" ]]; then
-  echo "Usage: $0 --vmid <id> --node <node> [--name ...] [--storage ...] [--image-url ...] [--image-file ...] [--memory ...] [--cores ...] [--bridge ...] [--ssh-public-key-file ...] [--cloud-init-user-snippet ...] [--snippet-store ...]" >&2
+  echo "Usage: $0 --vmid <id> --node <node> [--name ...] [--storage ...] [--image-url ...] [--image-file ...] [--memory ...] [--cores ...] [--bridge ...] [--ssh-public-key-file ...] [--cloud-init-user-snippet ...] [--snippet-store ...] [--force-recreate]" >&2
   exit 1
 fi
 
@@ -51,7 +53,14 @@ if [[ -n "$SSH_PUBLIC_KEY_FILE" && ! -f "$SSH_PUBLIC_KEY_FILE" ]]; then
   exit 1
 fi
 
-qm destroy "$VMID" --purge 1 >/dev/null 2>&1 || true
+if qm status "$VMID" >/dev/null 2>&1; then
+  if [[ "$FORCE_RECREATE" != "1" ]]; then
+    echo "VMID $VMID already exists. Re-run with --force-recreate to destroy and recreate it." >&2
+    exit 1
+  fi
+  qm destroy "$VMID" --purge 1 >/dev/null 2>&1
+fi
+
 qm create "$VMID" \
   --name "$NAME" \
   --node "$NODE" \
@@ -64,7 +73,12 @@ qm create "$VMID" \
   --agent enabled=1,fstrim_cloned_disks=1
 
 qm importdisk "$VMID" "$IMAGE_FILE" "$STORAGE"
-qm set "$VMID" --scsi0 "$STORAGE":vm-"$VMID"-disk-0
+IMPORTED_DISK="$(qm config "$VMID" | awk -F': ' '/^unused[0-9]+: / {print $2; exit}')"
+if [[ -z "$IMPORTED_DISK" ]]; then
+  echo "Failed to locate the imported disk in qm config for VMID $VMID." >&2
+  exit 1
+fi
+qm set "$VMID" --scsi0 "$IMPORTED_DISK"
 qm set "$VMID" --boot order=scsi0
 qm set "$VMID" --ide2 "$STORAGE":cloudinit
 qm set "$VMID" --ostype l26
