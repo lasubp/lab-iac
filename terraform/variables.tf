@@ -81,6 +81,11 @@ variable "ubuntu_vmid_stride" {
   type        = number
   description = "VMID spacing reserved per internal network"
   default     = 10
+
+  validation {
+    condition     = var.ubuntu_vmid_stride >= max([for net in values(var.internal_networks) : length(net.hosts)]...)
+    error_message = "ubuntu_vmid_stride must be at least the maximum number of hosts in any internal network to avoid duplicate VMIDs."
+  }
 }
 
 variable "dns_servers" {

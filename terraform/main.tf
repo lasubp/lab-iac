@@ -1,6 +1,6 @@
 locals {
-  ssh_public_key       = trimspace(file(pathexpand(var.ssh_public_key_file)))
-  sorted_network_names = sort(keys(var.internal_networks))
+  ssh_public_key         = trimspace(file(pathexpand(var.ssh_public_key_file)))
+  sorted_network_names   = sort(keys(var.internal_networks))
   opnsense_network_order = var.opnsense_internal_network_order
   network_index_by_name = {
     for idx, net_name in local.sorted_network_names : net_name => idx
@@ -36,7 +36,7 @@ resource "proxmox_vm_qemu" "opnsense" {
   balloon            = 0
 
   cpu {
-    cores     = var.opnsense_cores
+    cores = var.opnsense_cores
   }
 
   disk {
@@ -74,7 +74,7 @@ resource "proxmox_vm_qemu" "ubuntu" {
   full_clone  = true
 
   vmid               = each.value.vmid
-  start_at_node_boot = "false"
+  start_at_node_boot = false
   vm_state           = "stopped"
   os_type            = "cloud-init"
   agent              = 1
@@ -90,7 +90,7 @@ resource "proxmox_vm_qemu" "ubuntu" {
   memory  = var.ubuntu_memory
   balloon = 0
   cpu {
-    cores   = var.ubuntu_cores
+    cores = var.ubuntu_cores
   }
 
   disk {
