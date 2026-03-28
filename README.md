@@ -152,7 +152,6 @@ Example:
 bash scripts/create-ubuntu-template.sh \
   --vmid 9000 \
   --name ubuntu-2404-cloudinit-template \
-  --node pve \
   --storage local-lvm \
   --bridge vmbr0 \
   --ssh-public-key-file /root/.ssh/id_ed25519.pub
@@ -184,7 +183,6 @@ Example:
 bash scripts/create-opnsense-installer-vm.sh \
   --vmid 9001 \
   --name opnsense-template \
-  --node pve \
   --storage local-lvm \
   --iso-store local \
   --iso-file OPNsense-installer.iso \
