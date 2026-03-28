@@ -33,15 +33,7 @@ pveum group add terraform-users
 ## Add permissions
 
 ```bash
-pveum acl modify /storage -group terraform-users -role TerraformProv
-```
-
-```bash
-pveum acl modify /vms -group terraform-users -role TerraformProv
-```
-
-```bash
-pveum acl modify /sdn/zones -group terraform-users -role TerraformProv
+pveum acl modify / -group terraform-users -role TerraformProv
 ```
 
 ## Create user `terraform`
