@@ -3,7 +3,6 @@ set -euo pipefail
 
 VMID=""
 NAME="ubuntu-2404-cloudinit-template"
-NODE=""
 STORAGE="local-lvm"
 SNIPPET_STORE="local"
 CLOUD_INIT_USER_SNIPPET=""
@@ -19,7 +18,6 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --vmid) VMID="$2"; shift 2 ;;
     --name) NAME="$2"; shift 2 ;;
-    --node) NODE="$2"; shift 2 ;;
     --storage) STORAGE="$2"; shift 2 ;;
     --snippet-store) SNIPPET_STORE="$2"; shift 2 ;;
     --cloud-init-user-snippet) CLOUD_INIT_USER_SNIPPET="$2"; shift 2 ;;
@@ -34,8 +32,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$VMID" || -z "$NODE" ]]; then
-  echo "Usage: $0 --vmid <id> --node <node> [--name ...] [--storage ...] [--image-url ...] [--image-file ...] [--memory ...] [--cores ...] [--bridge ...] [--ssh-public-key-file ...] [--cloud-init-user-snippet ...] [--snippet-store ...] [--force-recreate]" >&2
+if [[ -z "$VMID" ]]; then
+  echo "Usage: $0 --vmid <id> [--name ...] [--storage ...] [--image-url ...] [--image-file ...] [--memory ...] [--cores ...] [--bridge ...] [--ssh-public-key-file ...] [--cloud-init-user-snippet ...] [--snippet-store ...] [--force-recreate]" >&2
   exit 1
 fi
 
@@ -63,7 +61,6 @@ fi
 
 qm create "$VMID" \
   --name "$NAME" \
-  --node "$NODE" \
   --memory "$MEMORY" \
   --cores "$CORES" \
   --net0 virtio,bridge="$BRIDGE" \

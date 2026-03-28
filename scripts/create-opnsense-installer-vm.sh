@@ -3,7 +3,6 @@ set -euo pipefail
 
 VMID=""
 NAME="opnsense-template"
-NODE=""
 STORAGE="local-lvm"
 ISO_STORE="local"
 ISO_FILE="OPNsense-installer.iso"
@@ -20,7 +19,6 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --vmid) VMID="$2"; shift 2 ;;
     --name) NAME="$2"; shift 2 ;;
-    --node) NODE="$2"; shift 2 ;;
     --storage) STORAGE="$2"; shift 2 ;;
     --iso-store) ISO_STORE="$2"; shift 2 ;;
     --iso-file) ISO_FILE="$2"; shift 2 ;;
@@ -36,13 +34,20 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$VMID" || -z "$NODE" ]]; then
-  echo "Usage: $0 --vmid <id> --node <node> [--name ...] [--storage ...] [--iso-store ...] [--iso-file ...] [--memory ...] [--cores ...] [--disk-size ...] [--bios ...] [--network-model ...] [--wan-bridge ...] [--lan-bridges bridge1,bridge2,...] [--force-recreate]" >&2
+if [[ -z "$VMID" ]]; then
+  echo "Usage: $0 --vmid <id> [--name ...] [--storage ...] [--iso-store ...] [--iso-file ...] [--memory ...] [--cores ...] [--disk-size ...] [--bios ...] [--network-model ...] [--wan-bridge ...] [--lan-bridges bridge1,bridge2,...] [--force-recreate]" >&2
   exit 1
 fi
 
 if [[ ${#LAN_BRIDGES[@]} -eq 0 ]]; then
   echo "Provide at least one LAN bridge with --lan-bridges." >&2
+  exit 1
+fi
+
+DISK_SIZE_GIB="${DISK_SIZE%G}"
+DISK_SIZE_GIB="${DISK_SIZE_GIB%g}"
+if [[ ! "$DISK_SIZE_GIB" =~ ^[0-9]+$ ]]; then
+  echo "Invalid --disk-size '$DISK_SIZE'. Use a whole number of GiB, for example 32 or 32G." >&2
   exit 1
 fi
 
@@ -66,7 +71,6 @@ done
 
 qm create "$VMID" \
   --name "$NAME" \
-  --node "$NODE" \
   --memory "$MEMORY" \
   --cores "$CORES" \
   --scsihw virtio-scsi-pci \
@@ -76,7 +80,7 @@ qm create "$VMID" \
   --vga serial0 \
   "${NET_ARGS[@]}"
 
-qm set "$VMID" --scsi0 "$STORAGE":"$DISK_SIZE"
+qm set "$VMID" --scsi0 "$STORAGE":"$DISK_SIZE_GIB"
 qm set "$VMID" --ide2 "$ISO_STORE":iso/"$ISO_FILE",media=cdrom
 qm set "$VMID" --boot order=scsi0\;ide2
 
