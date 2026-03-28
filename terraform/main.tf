@@ -32,9 +32,12 @@ resource "proxmox_vm_qemu" "opnsense" {
   scsihw             = "virtio-scsi-pci"
   boot               = "order=scsi0"
   agent              = 0
-  cores              = var.opnsense_cores
   memory             = var.opnsense_memory
   balloon            = 0
+
+  cpu {
+    cores     = var.opnsense_cores
+  }
 
   disk {
     slot    = "scsi0"
@@ -83,9 +86,11 @@ resource "proxmox_vm_qemu" "ubuntu" {
   nameserver         = join(" ", var.dns_servers)
   searchdomain       = var.searchdomain
 
-  cores   = var.ubuntu_cores
   memory  = var.ubuntu_memory
   balloon = 0
+  cpu 
+    cores   = var.ubuntu_cores
+  }
 
   disk {
     slot    = "scsi0"
