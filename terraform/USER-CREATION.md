@@ -7,7 +7,7 @@ The privilege sets below follow the Telmate Proxmox provider guidance. This repo
 ### Create role in PVE 8 and older
 
 ```bash
-pveum role add TerraformUser -privs "Datastore.Allocate \
+pveum role add TerraformProv -privs "Datastore.Allocate \
   Datastore.AllocateSpace Datastore.AllocateTemplate \
   Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify \
   SDN.Use VM.Allocate VM.Audit VM.Clone VM.Config.CDROM \
@@ -31,22 +31,6 @@ pveum group add terraform-users
 ```
 
 ## Add permissions
-
-Use `TerraformUser` on Proxmox 8 and older:
-
-```bash
-pveum acl modify /storage -group terraform-users -role TerraformUser
-```
-
-```bash
-pveum acl modify /vms -group terraform-users -role TerraformUser
-```
-
-```bash
-pveum acl modify /sdn/zones -group terraform-users -role TerraformUser
-```
-
-Use `TerraformProv` on Proxmox 9 and newer:
 
 ```bash
 pveum acl modify /storage -group terraform-users -role TerraformProv
