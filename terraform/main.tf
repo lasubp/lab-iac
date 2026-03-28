@@ -74,7 +74,8 @@ resource "proxmox_vm_qemu" "ubuntu" {
   full_clone  = true
 
   vmid               = each.value.vmid
-  start_at_node_boot = true
+  start_at_node_boot = "false"
+  vm_state           = "stopped"
   os_type            = "cloud-init"
   agent              = 1
   qemu_os            = "l26"
@@ -88,7 +89,7 @@ resource "proxmox_vm_qemu" "ubuntu" {
 
   memory  = var.ubuntu_memory
   balloon = 0
-  cpu 
+  cpu {
     cores   = var.ubuntu_cores
   }
 
