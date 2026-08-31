@@ -1,0 +1,36 @@
+# ProxMox Setup
+pm_api_url          = "https://pve.example.com:8006/api2/json"
+pm_api_token_id     = "terraform@pve!lab"
+pm_api_token_secret = "CHANGE_ME"
+pm_tls_insecure     = true
+
+# Base
+target_node     = "pve"
+clone_storage   = "local-lvm"
+vmid_start      = 2000
+template_name   = "ubuntu-2404-cloud"
+
+# VM
+vm_count        = 3
+vm_name_prefix  = "ubuntu"
+vm_id_start     = 2100
+vm_description  = "VM created by Terraform on ${timestamp()}"
+
+# Cloudinit
+ssh_public_key_file   = "/home/your-user/.ssh/id_ed25519.pub"
+vm_username           = "ubuntu"
+vm_password           = "ubuntu"
+
+# Hardware
+vm_cores        = 2
+vm_memory       = 2048
+vm_ram_baloon   = 0
+vm_disk_size    = "20G"
+
+# Network Configuration
+vm_net_bridge = "vmbr0"
+network_subnet           = "192.168.1"
+vm_ip_start              = 150
+gateway_ip               = "192.168.1.1"
+# dns_servers            = "8.8.8.8,8.8.4.4"
+enable_proxmox_firewall  = true
