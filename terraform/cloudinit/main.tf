@@ -1,4 +1,4 @@
-resource "proxmox_vm_qemu" "ubuntu" {
+resource "proxmox_vm_qemu" "cloudinit" {
   count = var.vm_count
 
   name        = "${var.vm_name_prefix}-${count.index + 1}"
