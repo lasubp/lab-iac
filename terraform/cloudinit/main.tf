@@ -8,7 +8,7 @@ resource "proxmox_vm_qemu" "ubuntu" {
 
   vmid               = var.vm_id_start + count.index  # VM IDs: 100, 101, 102, etc.
   start_at_node_boot = false
-  vm_state           = "running"
+  # power_state           = "running"
   os_type            = "cloud-init"
   agent              = 1
   scsihw             = "virtio-scsi-pci"
@@ -29,13 +29,26 @@ resource "proxmox_vm_qemu" "ubuntu" {
     cores = var.vm_cores
   }
 
-  disk {
-    slot    = "scsi0"
-    type    = "disk"
-    storage = var.clone_storage
-    size    = var.vm_disk_size
+disks {
+    scsi {
+      scsi0 {
+        # We have to specify the disk from our template, else Terraform will think it's not supposed to be there
+        disk {
+          storage = var.clone_storage
+          # The size of the disk should be at least as big as the disk in the template. If it's smaller, the disk will be recreated
+          size    = var.vm_disk_size
+        }
+      }
+    }
+    ide {
+      # Some images require a cloud-init disk on the IDE controller, others on the SCSI or SATA controller
+      ide1 {
+        cloudinit {
+          storage = var.clone_storage
+        }
+      }
+    }
   }
-
   network {
     id       = 0
     model    = "virtio"
@@ -46,5 +59,7 @@ resource "proxmox_vm_qemu" "ubuntu" {
     serial {
     id = 0
   }
+
+  # force_create=true
 }
 
